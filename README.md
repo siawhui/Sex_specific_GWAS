@@ -38,7 +38,7 @@ This folder contains 3 scripts that perform quality control (QC) in each genotyp
    Individuals and markers that fail the quality control can subsequently be removed with *plinkQC* to generate a new, clean dataset.
 
 3. **Reference fix** (`3_Reference_fix.sh`):  
-  Before combining genotype data from different cohorts, the reference fix script ensures that all datasets are harmonized to a common reference genome (Haplotype Reference Consortium, HRC). This is done using the Perl script, `HRC-1000G-check-bim.pl`, downloaded from [https://www.chg.ox.ac.uk/~wrayner/tools/](https://www.chg.ox.ac.uk/~wrayner/tools/).
+  Before combining genotype data from different cohorts, the reference fix script ensures that all datasets are harmonized to a common reference genome (Haplotype Reference Consortium, HRC). This is done using the Perl script, `HRC-1000G-check-bim.pl`, downloaded from [https://www.chg.ox.ac.uk/~wrayner/tools/](https://www.chg.ox.ac.uk/~wrayner/tools/).  
 
   This step addresses potential issues such as flipped strands, chromosome or position mismatches, and inconsistent allele annotations across cohorts. By aligning all datasets to the same reference, this process minimizes errors during merging and downstream analysis, ensuring the integrity of the combined genotype data.
 
