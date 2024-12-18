@@ -1,0 +1,52 @@
+---
+title: "chi_sqr_test"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Pearson's Chi-squared Test for Count Data
+```{r}
+#==== GERMAN ====#
+# Create a contingency table
+# Rows: Female/Male
+# Columns: Case/Control
+GERMAN <- matrix(c(480, 1793, 836, 1644),
+               nrow = 2,
+               byrow = TRUE)
+
+colnames(GERMAN) <- c("Cases", "Controls")
+rownames(GERMAN) <- c("Female", "Male")
+
+# Perform chi-square test
+chisq.test(GERMAN)
+# p-value < 2.2e-16: significant association between gender and case/control status
+
+#==== SPAIN ====#
+SPAIN <- matrix(c(86, 475, 133, 410),
+               nrow = 2,
+               byrow = TRUE)
+
+colnames(SPAIN) <- c("Cases", "Controls")
+rownames(SPAIN) <- c("Female", "Male")
+
+# Perform chi-square test
+chisq.test(SPAIN)
+# p-value < 0.0001828: significant association between gender and case/control status
+
+#==== ALL ====#
+ALL <- matrix(c(566, 2268, 969, 2054),
+               nrow = 2,
+               byrow = TRUE)
+
+colnames(ALL) <- c("Cases", "Controls")
+rownames(ALL) <- c("Female", "Male")
+
+# Perform chi-square test
+chisq.test(ALL)
+# p-value < 2.2e-16: significant association between gender and case/control status
+
+```
+

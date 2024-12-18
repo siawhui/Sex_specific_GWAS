@@ -1,0 +1,187 @@
+---
+title: "LocusZoom"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Install packages
+```{r}
+# BiocManager::install("ensembldb")
+# install.packages("locuszoomr")
+# BiocManager::install("EnsDb.Hsapiens.v75")
+# install.packages("LDlinkR")
+# install.packages("remotes")
+# install.packages("TwoSampleMR", repos = c("https://mrcieu.r-universe.dev", "https://cloud.r-project.org"))
+# remotes::install_github("richardslab/MRutils")
+```
+
+## Load libraries
+```{r}
+library(LDlinkR)
+library(tidyverse)
+library(dplyr)
+library(locuszoomr)
+library(EnsDb.Hsapiens.v75)
+library(data.table)
+library(MRutils)
+```
+
+## Set up
+```{r}
+parent_dir <- c("GWAS/GWAS_ALL", "GWAS/GWAS_BCN_GCAT", "GWAS/GWAS_GOFA_KFO")
+
+# List all conditional analysis directories (match the pattern "conditional_analysis")
+dirs <- list.files(parent_dir, pattern = "conditional_analysis", full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
+
+# List all conditional analysis files ending with ".txt"
+dirs <- list.files(dirs, full.names = TRUE, pattern = "\\.txt$")
+
+# Get file names and remove the prefix (chr) and suffix (.txt) -> chr_pos_ref_alt
+file_name <- basename(dirs)
+file_name <- gsub("^chr", "", file_name)
+file_name <- gsub("\\.txt$", "", file_name)
+
+# Recombination track
+# Downloaded from https://hgdownload.soe.ucsc.edu/gbdb/hg19/decode/
+recomb <- rtracklayer::import.bw("hapMapRelease24CombinedRecombMap.bw")
+
+# LDlink user token, register for token at https://ldlink.nih.gov/?tab=apiaccess
+LDlink_token<- "YOURTOKEN"
+
+# Create folder for plots
+dir.create("GWAS/cond_plots", recursive = TRUE)
+```
+
+## Plot regional plot for all independent significant SNPs
+```{r}
+for (i in 1:length(file_name)) {
+  
+  # Get chr, pos, ref and alt from file name
+  markerID <- gsub("_", ":", file_name[i])
+  split_marker <- strsplit(markerID, ":")[[1]]
+  chr <- split_marker[1]
+  pos <- split_marker[2]
+  ref <- split_marker[3]
+  alt <- split_marker[4]
+  
+  # Get SNP RSID from chr and position (hg19)
+  snp <- get_rsid_from_position(chr, pos, ref, alt, assembly = "hg19")
+  
+  # Conditional analysis file path
+  cond_analysis_file <- dirs[i]
+  
+  # Extract the cohort and study names
+  cohort <- gsub("GWAS_", "", unlist(strsplit(cond_analysis_file, "/"))[5])
+  study <- gsub("_conditional_analysis", "", unlist(strsplit(cond_analysis_file, "/"))[6])
+
+  # Output plot path
+  plot_path <- paste0("GWAS/cond_plots/", cohort, "_", study, "_chr", chr, "_", pos, "_", snp, ".pdf")
+  
+  # Get LD information of the SNP
+  LD <- LDproxy(snp = snp, 
+              pop = "EUR",
+              r2d = "r2", 
+              token = LDlink_token,
+              genome_build = "grch37",
+              win_size = 500000
+              )
+  
+  # Reformulate the table
+  LD <- LD %>%
+    mutate(Coord = gsub("chr", "", Coord)) %>%
+    separate(Coord, into = c("CHR", "POS"), sep = ":") %>%
+    mutate(CHR = as.integer(CHR), POS = as.integer(POS)) %>%
+    dplyr::select(CHR, POS, R2)
+  
+  # Define windows
+  pos_range <- c(min(LD$POS)-300, max(LD$POS)+300)
+  
+  # Read conditional analysis results (SAIGE)
+  cond <- fread(cond_analysis_file, header = T)
+  
+  # Define max_y
+  max_y <- ceiling(-log10(min(min(cond$p.value), min(cond$p.value.NA_c))))
+  
+  # Merge table to get the LD info
+  cond <- cond %>%
+    left_join(LD, by = c("CHR", "POS")) %>%
+    mutate(across(everything(), ~replace_na(., 0)))
+  
+  # LocusZoom for GWAS result
+  loc <- locus(data = cond, seqname = chr, xrange = pos_range, LD = "R2",
+               ens_db = "EnsDb.Hsapiens.v75", index_snp = markerID,
+               chrom = "CHR", pos = "POS", p = "p.value", labs = "MarkerID")
+  loc <- link_recomb(loc, recomb=recomb)
+  # summary(loc)
+
+  # LocusZoom for conditional analysis result
+  loc_cond <- locus(data = cond, seqname = chr, xrange = pos_range, LD = "R2",
+                    ens_db = "EnsDb.Hsapiens.v75", index_snp = markerID,
+                    chrom = "CHR", pos = "POS", p = "p.value.NA_c", labs = "MarkerID")
+  loc_cond <- link_recomb(loc_cond, recomb=recomb)
+  
+  # Plot both plots together
+  pdf(plot_path, width = 9, height = 5)
+  multi_layout(ncol = 2,
+               plots = {
+                 locus_plot(loc, use_layout = FALSE, legend_pos = 'topleft', ylim=c(0,max_y))
+                 locus_plot(loc_cond, use_layout = FALSE, legend_pos = NULL, ylim=c(0,max_y))
+               })
+  dev.off()
+}
+```
+
+## Plot regional plot for interested SNP
+```{r}
+# Set up
+chr <- 5
+pos <- 132027681
+ref <- "A"
+alt <- "T"
+markerID <- "5:132027681:A:T"
+
+# Get SNP RSID from chr and position (hg19)
+snp <- get_rsid_from_position(chr, pos, ref, alt, assembly = "hg19")
+
+# Get LD information of the SNP
+LD <- LDproxy(snp = snp, 
+            pop = "EUR",
+            r2d = "r2", 
+            token = LDlink_token,
+            genome_build = "grch37",
+            win_size = 500000
+            )
+
+# Reformulate the table
+LD <- LD %>%
+  mutate(Coord = gsub("chr", "", Coord)) %>%
+  separate(Coord, into = c("CHR", "POS"), sep = ":") %>%
+  mutate(CHR = as.integer(CHR), POS = as.integer(POS)) %>%
+  dplyr::select(CHR, POS, R2)
+
+# Define windows
+pos_range <- c(min(LD$POS)-300, max(LD$POS)+300)
+
+# Read GWAS result
+GWAS <- fread("PATH_TO_GWAS_RESULT", header = T)
+GWAS <- na.omit(GWAS)
+
+# Define max_y
+max_y <- ceiling(-log10(min(GWAS$p.value)))
+
+# Merge table to get the LD info
+GWAS <- GWAS %>%
+  left_join(LD, by = c("CHR", "POS")) %>%
+  mutate(across(everything(), ~replace_na(., 0)))
+
+# Plot LocusZoom
+loc <- locus(data = GWAS, seqname = chr, xrange = pos_range, LD = "R2",
+             ens_db = "EnsDb.Hsapiens.v75", index_snp = markerID,
+             chrom = "CHR", pos = "POS", p = "p.value", labs = "MarkerID")
+png("LocusZoom.png", width = 9, height = 5, units = "in", res = 300)
+locus_plot(loc, ylim=c(0,max_y))
+dev.off()
+```

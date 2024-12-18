@@ -1,0 +1,34 @@
+---
+title: "Check relatedness"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Set up
+```{r}
+indir <- 'PATH_TO_DIRECTORY_CONTAINING_MERGED_PLINK_FILE'
+qcdir <- 'PATH_TO_QC_DIRECTORY'
+name <- 'PREFIX_OF_MERGED_FILE'
+path2plink <- "PATH_TO_EXECUTABLE_PLINK"
+
+# Create folder for plots
+dir.create(paste0(qcdir, "/plots"), recursive = TRUE)
+```
+
+## Check relatedness
+```{r}
+library(plinkQC)
+
+exclude_relatedness <- check_relatedness(indir=indir, qcdir=qcdir, name=name,
+                                         interactive=TRUE, 
+                                         path2plink=path2plink)
+
+png(paste0(qcdir, "/plots/check_relatedness.png"), res=180, width = 800, height = 400)
+print(exclude_relatedness$p_IBD) 
+dev.off()
+
+write.table(exclude_relatedness$failIDs, paste0(qcdir, "/", name, ".fail-IBD.IDs"), sep="\t", quote=F, col.names = F, row.names = F)
+```

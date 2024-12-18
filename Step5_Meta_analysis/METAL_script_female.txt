@@ -1,0 +1,35 @@
+# Meta-analysis weighted by standard error does not work well
+# because different studies used very different transformations
+SCHEME   STDERR
+
+# Not sure if genomic control is a good idea, given the large
+# number of true associations in these three regions ...
+# GENOMICCONTROL ON
+
+# To help identify allele flips, it can be useful to track
+# allele frequencies in the meta-analysis.
+AVERAGEFREQ ON
+MINMAXFREQ ON
+
+MARKER   MarkerID
+DEFAULT  3917
+ALLELE   Allele2 Allele1
+FREQ     AF_Allele2
+EFFECT   BETA
+STDERR   SE
+PVAL     p.value
+
+PROCESS /fast/AG_Lee/Siaw/Sex_specific_GWAS/GWAS/GWAS_GOFA_KFO/female/GOFA_KFO_female.GWAS.txt
+
+MARKER   MarkerID
+DEFAULT  971
+ALLELE   Allele2 Allele1
+FREQ     AF_Allele2
+EFFECT   BETA
+STDERR   SE
+PVAL     p.value
+
+PROCESS /fast/AG_Lee/Siaw/Sex_specific_GWAS/GWAS/GWAS_BCN_GCAT/female/BCN_GCAT_female.GWAS.txt
+
+OUTFILE	 results/METAANALYSIS_female .tbl
+ANALYZE

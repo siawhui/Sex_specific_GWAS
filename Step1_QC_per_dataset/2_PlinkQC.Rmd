@@ -1,0 +1,107 @@
+---
+title: "plinkQC"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Set up
+```{r}
+indir <- 'PATH_TO_DIRECTORY_CONTAINING_PLINK_FILE'
+qcdir <- 'PATH_TO_QC_DIRECTORY'
+refdir <- 'PATH_TO_DIRECTORY_CONTAINING_THE_REFERENCE_FILE'
+name <- 'PREFIX_OF_GENOTYPE_FILE'
+refname <- 'NAME_OF_REFERENCE_FILE'
+# Prefix of the reference samples (_ID2Pop.txt) and population colours (_PopColors.txt) files
+refpop <- 'PREFIX_OF_REFEFENCE_POPULATION'  # obtained from plinkQC/extdata (e.g. Genomes1000)
+# Prefix of merged dataset (study and reference samples) used in plink –pca, resulting in prefixMergedDataset.eigenvec
+prefixMergedDataset <- 'PREFIX_OF_MERGED_DATASET' 
+path2plink <- "PATH_TO_EXECUTABLE_PLINK"
+
+# Create folder for plots
+dir.create(paste0(qcdir, "/plots"), recursive = TRUE)
+```
+
+## Edit functions temporary
+```{r}
+library(plinkQC)
+
+trace(evaluate_check_ancestry, edit=T)
+# Line 112: re-define the refPopulation (default: CEU and TSI)
+# refPopulation = c("CEU", "TSI", "GBR", "IBS")
+
+trace(run_check_heterozygosity, edit=T)
+# Line 13: add flag to extract only pruned SNPs
+# "--extract", paste(out, ".prune.in", sep = "")
+
+trace(perIndividualQC, edit=T)
+# Move the check_relatedness chunk before check_missing_and_het
+```
+
+## plinkQC: per Indicidual QC
+```{r}
+fail_individuals <- perIndividualQC(indir=indir, qcdir=qcdir, name=name,
+                            refSamplesFile=paste0(refdir, "/", refpop, "_ID2Pop.txt"), 
+                            refColorsFile=paste0(refdir, "/", refpop, "_PopColors.txt"),
+                            prefixMergedDataset=prefixMergedDataset,
+                            path2plink=path2plink, do.run_check_ancestry = FALSE, dont.check_sex = TRUE,
+                            interactive=FALSE, verbose=TRUE,
+                            studyColor = "#000000")
+
+png(paste0(qcdir, "/plots/perIndividualQC_n95.png"), res=120, width = 800, height = 800)
+print(fail_individuals$p_sampleQC) 
+dev.off()
+
+overview_individuals <- overviewPerIndividualQC(fail_individuals,
+                                                interactive=FALSE)
+
+png(paste0(qcdir, "/plots/overviewPerIndividualQC_n95.png"), res=100, width = 600, height = 600)
+print(overview_individuals$p_overview)
+dev.off()
+```
+
+## plinkQC: per Marker QC
+```{r}
+fail_markers <- perMarkerQC(indir=indir, qcdir=qcdir, name=name,
+                            path2plink=path2plink,
+                            verbose=TRUE, interactive=FALSE,
+                            mafTh = 0.01,
+                            hweTh = 1e-05)
+
+png(paste0(qcdir, "/plots/perMarkerQC_n95.png"), res=120, width = 800, height = 800)
+print(fail_markers$p_marker) 
+dev.off()
+
+overview_marker <- overviewPerMarkerQC(fail_markers, interactive=FALSE)
+
+png(paste0(qcdir, "/plots/overviewPerMarkerQC_n95.png"), res=100, width = 600, height = 600)
+print(overview_marker$p_overview)
+dev.off()
+```
+
+## Remove individuals and markers that failed the QC
+```{r}
+Ids  <- cleanData(indir=indir, qcdir=qcdir, name=name, path2plink=path2plink,
+                  verbose=TRUE, filterSex = F, mafTh = 0.01, hweTh = 1e-04) # HWE filter for controls
+# In case/control data, cases and missing phenotypes are normally ignore by PLINK
+
+# Add flag "include-nonctrl" flag to filter HWE also in cases (or "--hwe-all")
+trace(cleanData, edit=T)
+# line 177
+# hwe <- c("--hwe midp include-nonctrl", hweTh)
+
+# Rename PLINK file
+file.rename(from=paste0(qcdir, "/", name, ".clean.bed"),
+            to=paste0(qcdir, "/", name, ".bed"))
+file.rename(from=paste0(qcdir, "/", name, ".clean.bim"),
+            to=paste0(qcdir, "/", name, ".bim"))
+file.rename(from=paste0(qcdir, "/", name, ".clean.fam"),
+            to=paste0(qcdir, "/", name, ".fam"))
+
+indir <- qcdir
+
+Ids  <- cleanData(indir=indir, qcdir=qcdir, name=name, path2plink=path2plink,
+                  verbose=TRUE, filterSex = F, mafTh = 0.01, hweTh = 1e-05) # apply less stringent HWE filter for cases
+```
