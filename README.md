@@ -13,40 +13,50 @@ This repository contains the code and scripts developed for my Master's thesis: 
 7. [Manhattan plot and QQ plot](#manhattan-plot-and-quantile-quantile-qq-plot-step6_manhattan_and_qq_plots)
 8. [Conditional analysis](#conditional-analysis-step7_conditional_analysis)
 9. [Interaction analysis](#interaction-analysis-step8_interaction_analysis)
-10. [Heritability estimation and chi-squared test](Step9_Heritability_and_chisqr_test/)](#heritability-estimation-and-chi-squared-test-step9_heritability_and_chisqr_test)
+10. [Heritability estimation and chi-squared test](#heritability-estimation-and-chi-squared-test-step9_heritability_and_chisqr_test)
 
 
 ## Quality control on each dataset (`Step1_QC_per_dataset/`)
 This folder contains 3 scripts that perform quality control (QC) in each genotype dataset separately. Before starting the QC, convert the genotype PED/MAP files into PLINK BED/BIM/FAM files. 
 
-1. Check Ancestry (`1_Check_ancestry.sh`)
-The genotypes of the study population is combined with genotypes of a reference dataset consisting of individuals from known ethnicities. Principal component analysis (PCA) on this combined genotype panel can then be used to detect population structure down to the level of the reference dataset.
+1. **Check Ancestry** (`1_Check_ancestry.sh`)
+  The genotypes of the study population is combined with genotypes of a reference dataset consisting of individuals from known ethnicities. Principal component analysis (PCA) on this combined genotype panel can then be used to detect population structure down to the level of the reference dataset.
 
-2. QC (`2_PlinkQC.Rmd`)
-*plinkQC* performs per-individual and per-marker genotype QC and generate QC report. The per-individual QC includes: (i) check heterozygosity and missingness: for the identification of individuals with outlying missing genotype and/or heterozygosity rates, (ii) check relatedness: for the identification of related individuals, (iii) check ancestry: identification of individuals of divergent ancestry. The per-marker QC includes: (i) check SNP missingnes: for the identifying markers with excessive missing genotype rates, (ii) check Hardy-Weinberg equilibrium (HWE): for the identifying markers showing a significant deviation from HWE, (iii) check minor allele frequency (MAF): for the removal of markers with low MAF.
+2. **QC** (`2_PlinkQC.Rmd`)
+  *plinkQC* performs per-individual and per-marker genotype QC and generates a QC report. 
 
-Individuals and markers that fail the quality control can subsequently be removed with plinkQC to generate a new, clean dataset. 
+  The per-individual QC includes:
+  - **Check heterozygosity and missingness**: For the identification of individuals with outlying missing genotype and/or heterozygosity rates.
+  - **Check relatedness**: For the identification of related individuals.
+  - **Check ancestry**: For identification of individuals of divergent ancestry.
 
-3. Reference fix (`3_Reference_fix.sh`)
-Before combining genotype data from different cohorts, the reference fix script ensures that all datasets are harmonized to a common reference genome (Haplotype Reference Consortium, HRC). This is done using the Perl script, `HRC-1000G-check-bim.pl`, downloaded from [https://www.chg.ox.ac.uk/~wrayner/tools/](https://www.chg.ox.ac.uk/~wrayner/tools/).
+  The per-marker QC includes:
+  - **Check SNP missingness**: For identifying markers with excessive missing genotype rates.
+  - **Check Hardy-Weinberg equilibrium (HWE)**: For identifying markers showing a significant deviation from HWE.
+  - **Check minor allele frequency (MAF)**: For the removal of markers with low MAF.
 
-This step addresses potential issues such as flipped strands, chromosome or position mismatches, and inconsistent allele annotations across cohorts. By aligning all datasets to the same reference, this process minimizes errors during merging and downstream analysis, ensuring the integrity of the combined genotype data.
+  Individuals and markers that fail the quality control can subsequently be removed with plinkQC to generate a new, clean dataset. 
+
+3. **Reference fix** (`3_Reference_fix.sh`)
+  Before combining genotype data from different cohorts, the reference fix script ensures that all datasets are harmonized to a common reference genome (Haplotype Reference Consortium, HRC). This is done using the Perl script, `HRC-1000G-check-bim.pl`, downloaded from [https://www.chg.ox.ac.uk/~wrayner/tools/](https://www.chg.ox.ac.uk/~wrayner/tools/).
+
+  This step addresses potential issues such as flipped strands, chromosome or position mismatches, and inconsistent allele annotations across cohorts. By aligning all datasets to the same reference, this process minimizes errors during merging and downstream analysis, ensuring the integrity of the combined genotype data.
 
 
 ## Merge datasets and reference fix (`Step2_Merge_and_reference_fix/`)
 This folder contains 4 scripts that handle key steps in merging and preparing genotype datasets from different cohorts, ensuring consistency and data quality:
 
 1. Merging Datasets (`1_Merge.sh`)
-Cleaned genotype data are combined into three sets: German, Spanish, and a combined dataset including all cohorts.
+  Cleaned genotype data are combined into three sets: German, Spanish, and a combined dataset including all cohorts.
 
 2. Checking for Duplicated Individuals (`2_plinkQC_relatedness.Rmd`)
-This R Markdown script uses *plinkQC* to identify and resolve duplicate individuals who may have been recruited multiple times across or within cohorts.
+  This R Markdown script uses *plinkQC* to identify and resolve duplicate individuals who may have been recruited multiple times across or within cohorts.
 
 3. Reference Fix and Conversion to VCF (`3_Reference_fix.sh`)
-The Perl script `HRC-1000G-check-bim.pl` is used to ensure harmonization of genotype data to reference genome used for imputation (HRC) by fixing strand mismatches, chromosome/position inconsistencies, and allele alignment issues. The final output is converted to VCF format for imputation.
+  The Perl script `HRC-1000G-check-bim.pl` is used to ensure harmonization of genotype data to reference genome used for imputation (HRC) by fixing strand mismatches, chromosome/position inconsistencies, and allele alignment issues. The final output is converted to VCF format for imputation.
 
 4. X Chromosome QC and Reference Fix (`4_Xchr_QC_merge_referenceFix.sh`)
-This script performs all QC steps, merging, and reference fixing separately for X chromosome data (similar to autosomal chromosomes). Additionally, it includes an extra step to fix the ploidy of the X chromosome data using `bcftools +fixploidy`.
+  This script performs all QC steps, merging, and reference fixing separately for X chromosome data (similar to autosomal chromosomes). Additionally, it includes an extra step to fix the ploidy of the X chromosome data using `bcftools +fixploidy`.
 
 ## Imputation
 Imputation of each dataset (German, Spanish, and combined dataset) were done on Sanger Imputation Service webserver ([https://imputation.sanger.ac.uk/](https://imputation.sanger.ac.uk/)) following the instructions [here](https://imputation.sanger.ac.uk/?instructions=1#prepareyourdata). 
@@ -70,10 +80,10 @@ Further details are provided below to assist with future replication:
 In this folder, two scripts are provided for performing QC after imputation on genetic data.
 
 1. QC in autosomal chromosomes (`1_Filter_INFO_and_MAF_autosomal_chr.sh`)
-This script filters variants based on MAF, INFO score, and HWE (in controls) for autosomal chromosomes. The filtering thresholds ensure high-quality variants for downstream analysis.
+ This script filters variants based on MAF, INFO score, and HWE (in controls) for autosomal chromosomes. The filtering thresholds ensure high-quality variants for downstream analysis.
 
 2. QC in X chromosome (`2_Filter_INFO_and_MAF_Xchr.sh`)
-This script applies the same QC steps (MAF, INFO score, and HWE filtering) specifically to the X chromosome.
+  This script applies the same QC steps (MAF, INFO score, and HWE filtering) specifically to the X chromosome.
 
 
 ## Association analysis (`Step4_Association_analysis/`)
